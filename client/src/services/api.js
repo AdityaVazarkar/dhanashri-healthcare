@@ -1,0 +1,76 @@
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor to append JWT token
+api.interceptors.request.use(
+  (config) => {
+    // If Authorization is already explicitly provided, respect it
+    const existingAuth = config.headers?.Authorization || 
+      (typeof config.headers?.get === 'function' ? config.headers.get('Authorization') : null);
+    if (existingAuth) {
+      return config;
+    }
+
+    const adminToken = localStorage.getItem('dhanashri_admin_token') || localStorage.getItem('pulsebio_admin_token');
+    const userToken = localStorage.getItem('dhanashri_user_token') || localStorage.getItem('pulsebio_user_token');
+
+    // Check if request is in an admin context
+    const hasAdminHeader = Boolean(
+      (typeof config.headers?.get === 'function' && 
+        (config.headers.get('X-Admin-Request') || config.headers.get('x-admin-request'))) ||
+      config.headers?.['X-Admin-Request'] ||
+      config.headers?.['x-admin-request']
+    );
+
+    const isAdminUrl = Boolean(
+      config.url && (
+        config.url.includes('/admin') || 
+        config.url.includes('/dashboard/admin') ||
+        config.url.startsWith('/users')
+      )
+    );
+
+    const isOnAdminPage = typeof window !== 'undefined' && 
+      window.location && 
+      window.location.pathname.startsWith('/admin');
+
+    const isAdminContext = hasAdminHeader || isAdminUrl || isOnAdminPage;
+
+    // Use admin token for admin context, user token otherwise
+    const token = isAdminContext 
+      ? (adminToken || userToken) 
+      : (userToken || adminToken);
+
+    if (token) {
+      if (typeof config.headers?.set === 'function') {
+        config.headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn('Unauthorized API call:', error.response.data?.message);
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
