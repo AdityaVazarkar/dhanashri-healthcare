@@ -4,6 +4,7 @@ import AdminSidebar from '../components/admin/AdminSidebar';
 import AdminHeader from '../components/admin/AdminHeader';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 
 export default function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -47,7 +48,9 @@ export default function AdminLayout() {
         />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

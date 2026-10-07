@@ -43,6 +43,7 @@ export default function AdminDashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [testSearch, setTestSearch] = useState('');
 
   useEffect(() => {
     fetchMetrics();
@@ -107,7 +108,6 @@ export default function AdminDashboardPage() {
   const recentBookings = data?.recentBookings || [];
   const liveTests = data?.liveTests || [];
   const livePackages = data?.livePackages || [];
-  const [testSearch, setTestSearch] = useState('');
 
   const filteredLiveTests = liveTests.filter((t) =>
     !testSearch.trim() ||

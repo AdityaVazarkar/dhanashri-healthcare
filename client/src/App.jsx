@@ -35,6 +35,7 @@ import AdminBookingManagementPage from './pages/admin/AdminBookingManagementPage
 import AdminReportManagementPage from './pages/admin/AdminReportManagementPage';
 import AdminUserManagementPage from './pages/admin/AdminUserManagementPage';
 import AdminNotificationCenterPage from './pages/admin/AdminNotificationCenterPage';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // User Protected Route Guard
 function ProtectedUserRoute({ children }) {
@@ -48,9 +49,10 @@ function ProtectedUserRoute({ children }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <BrowserRouter>
+    <ErrorBoundary>
+      <AuthProvider>
+        <CartProvider>
+          <BrowserRouter>
           <Routes>
             {/* Patient & Public Portal Routes */}
             <Route path="/" element={<PatientLayout />}>
@@ -144,5 +146,6 @@ export default function App() {
         </BrowserRouter>
       </CartProvider>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
