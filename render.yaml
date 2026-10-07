@@ -14,4 +14,12 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: dhanashri-database
+          property: connectionString
+
+databases:
+  - name: dhanashri-database
+    plan: free
+    databaseName: dhanashri_db
+    user: dhanashri_user
