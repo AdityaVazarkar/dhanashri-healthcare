@@ -13,19 +13,25 @@ import {
   Sparkles,
   ShoppingBag,
   Package,
-  Activity
+  Activity,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import EditBookingModal from '../components/booking/EditBookingModal';
+import DeleteBookingConfirmModal from '../components/booking/DeleteBookingConfirmModal';
 
 export default function UserDashboard() {
   const { user, token } = useAuth();
   const { addToCart } = useCart();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [editingBooking, setEditingBooking] = useState(null);
+  const [deletingBooking, setDeletingBooking] = useState(null);
 
   useEffect(() => {
     fetchDashboard();
@@ -184,13 +190,32 @@ export default function UserDashboard() {
                 </div>
               </div>
 
-              <div className="pt-2 flex justify-end">
+              <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setEditingBooking(upcomingAppointment)}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-emerald-50 hover:text-[#15803D] text-slate-700 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 shadow-2xs"
+                    title="Edit test appointment schedule or details"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Edit Booking</span>
+                  </button>
+                  <button
+                    onClick={() => setDeletingBooking(upcomingAppointment)}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 shadow-2xs"
+                    title="Cancel and delete this test booking"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+
                 <Link
                   to="/bookings"
-                  className="px-5 py-2.5 bg-[#F0FDF4] hover:bg-[#DCFCE7] text-[#15803D] text-xs font-bold rounded-xl transition flex items-center space-x-1"
+                  className="px-4 py-2 bg-[#F0FDF4] hover:bg-[#DCFCE7] text-[#15803D] text-xs font-bold rounded-xl transition flex items-center space-x-1.5"
                 >
-                  <Eye className="w-3.5 h-3.5 mr-1" />
-                  <span>View Booking Status</span>
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>View Status</span>
                 </Link>
               </div>
             </div>
@@ -322,6 +347,34 @@ export default function UserDashboard() {
           ))}
         </div>
       </div>
+
+      {/* Edit Booking Modal */}
+      {editingBooking && (
+        <EditBookingModal
+          isOpen={!!editingBooking}
+          onClose={() => setEditingBooking(null)}
+          booking={editingBooking}
+          onSuccess={() => {
+            setEditingBooking(null);
+            fetchDashboard();
+          }}
+          isAdmin={false}
+        />
+      )}
+
+      {/* Delete Booking Confirmation Modal */}
+      {deletingBooking && (
+        <DeleteBookingConfirmModal
+          isOpen={!!deletingBooking}
+          onClose={() => setDeletingBooking(null)}
+          booking={deletingBooking}
+          onSuccess={() => {
+            setDeletingBooking(null);
+            fetchDashboard();
+          }}
+          isAdmin={false}
+        />
+      )}
     </div>
   );
 }

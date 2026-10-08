@@ -16,7 +16,9 @@ import {
   Plus,
   Sparkles,
   Search,
-  ExternalLink
+  ExternalLink,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -36,6 +38,8 @@ import {
 import api from '../../services/api';
 import StatusBadge from '../../components/common/StatusBadge';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import EditBookingModal from '../../components/booking/EditBookingModal';
+import DeleteBookingConfirmModal from '../../components/booking/DeleteBookingConfirmModal';
 
 const COLORS = ['#F59E0B', '#3B82F6', '#6366F1', '#A855F7', '#10B981', '#059669', '#EF4444'];
 
@@ -44,6 +48,8 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [testSearch, setTestSearch] = useState('');
+  const [editingBooking, setEditingBooking] = useState(null);
+  const [deletingBooking, setDeletingBooking] = useState(null);
 
   useEffect(() => {
     fetchMetrics();
@@ -406,13 +412,30 @@ export default function AdminDashboardPage() {
                       <StatusBadge status={b.booking_status} />
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <Link
-                        to="/admin/bookings"
-                        className="px-3 py-1.5 rounded-lg bg-emerald-50 text-[#15803D] hover:bg-emerald-100 font-bold transition inline-flex items-center space-x-1"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Manage</span>
-                      </Link>
+                      <div className="flex items-center justify-end space-x-1.5">
+                        <button
+                          onClick={() => setEditingBooking(b)}
+                          className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
+                          title="Edit Booking"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingBooking(b)}
+                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                          title="Delete Booking"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <Link
+                          to="/admin/bookings"
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-[#15803D] hover:bg-emerald-100 font-bold transition inline-flex items-center space-x-1"
+                          title="Open Booking Management"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Manage</span>
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -636,6 +659,34 @@ export default function AdminDashboardPage() {
           </table>
         </div>
       </div>
+
+      {/* Edit Booking Modal */}
+      {editingBooking && (
+        <EditBookingModal
+          isOpen={!!editingBooking}
+          onClose={() => setEditingBooking(null)}
+          booking={editingBooking}
+          onSuccess={() => {
+            setEditingBooking(null);
+            fetchMetrics(true);
+          }}
+          isAdmin={true}
+        />
+      )}
+
+      {/* Delete Booking Confirmation Modal */}
+      {deletingBooking && (
+        <DeleteBookingConfirmModal
+          isOpen={!!deletingBooking}
+          onClose={() => setDeletingBooking(null)}
+          booking={deletingBooking}
+          onSuccess={() => {
+            setDeletingBooking(null);
+            fetchMetrics(true);
+          }}
+          isAdmin={true}
+        />
+      )}
     </div>
   );
 }

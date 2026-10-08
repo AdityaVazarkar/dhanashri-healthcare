@@ -27,7 +27,8 @@ async function getUserDashboard(req, res) {
     const nextAppointmentRes = await pool.query(`
       SELECT 
         b.id, b.booking_code, b.appointment_date, b.time_slot, b.collection_type, b.booking_status,
-        b.total_amount,
+        b.total_amount, b.patient_name, b.patient_age, b.patient_gender, b.patient_mobile,
+        b.address, b.landmark, b.city, b.pincode, b.notes,
         COALESCE(
           json_agg(
             json_build_object('id', bi.id, 'item_name', bi.item_name, 'price', bi.price)
@@ -161,8 +162,9 @@ async function getAdminDashboard(req, res) {
     // Recent 6 Bookings with items
     const recentBookingsRes = await pool.query(`
       SELECT 
-        b.id, b.booking_code, b.patient_name, b.appointment_date, b.time_slot,
-        b.collection_type, b.total_amount, b.booking_status, b.payment_status,
+        b.id, b.booking_code, b.patient_name, b.patient_age, b.patient_gender, b.patient_mobile,
+        b.appointment_date, b.time_slot, b.collection_type, b.address, b.landmark, b.city, b.pincode,
+        b.notes, b.total_amount, b.booking_status, b.payment_status,
         u.email AS user_email, u.full_name AS user_name,
         COALESCE(
           json_agg(

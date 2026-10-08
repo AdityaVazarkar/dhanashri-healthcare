@@ -12,12 +12,16 @@ import {
   AlertCircle,
   RefreshCw,
   FileText,
-  User
+  User,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import api from '../../services/api';
 import StatusBadge from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import EditBookingModal from '../../components/booking/EditBookingModal';
+import DeleteBookingConfirmModal from '../../components/booking/DeleteBookingConfirmModal';
 
 const BOOKING_STATUSES = [
   'Pending',
@@ -42,6 +46,8 @@ export default function AdminBookingManagementPage() {
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [editingBooking, setEditingBooking] = useState(null);
+  const [deletingBooking, setDeletingBooking] = useState(null);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
@@ -370,11 +376,26 @@ export default function AdminBookingManagementPage() {
                             <span>Report</span>
                           </button>
                           <button
+                            onClick={() => setEditingBooking(b)}
+                            className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
+                            title="Edit Booking Details & Schedule"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setDeletingBooking(b)}
+                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                            title="Delete Booking"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
                             onClick={() => handleOpenDetailModal(b)}
                             className="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition inline-flex items-center space-x-1 text-xs"
+                            title="Quick Status Update"
                           >
                             <Eye className="w-3.5 h-3.5" />
-                            <span>Update</span>
+                            <span>Status</span>
                           </button>
                         </div>
                       </td>
@@ -486,19 +507,48 @@ export default function AdminBookingManagementPage() {
               </select>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => {
-                  const bId = selectedBooking.id;
-                  setSelectedBooking(null);
-                  navigate(`/admin/reports?booking_id=${bId}`);
-                }}
-                className="px-3.5 py-2 bg-emerald-50 text-[#15803D] hover:bg-emerald-100 font-bold rounded-xl flex items-center space-x-1.5 transition text-xs"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Generate Lab Report</span>
-              </button>
+            <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const b = selectedBooking;
+                    setSelectedBooking(null);
+                    setEditingBooking(b);
+                  }}
+                  className="px-3 py-2 bg-slate-100 hover:bg-emerald-50 hover:text-[#15803D] text-slate-700 font-bold rounded-xl flex items-center space-x-1.5 transition text-xs"
+                  title="Edit full patient and appointment schedule details"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Edit Details</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const b = selectedBooking;
+                    setSelectedBooking(null);
+                    setDeletingBooking(b);
+                  }}
+                  className="px-3 py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 font-bold rounded-xl flex items-center space-x-1.5 transition text-xs"
+                  title="Delete this test booking"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const bId = selectedBooking.id;
+                    setSelectedBooking(null);
+                    navigate(`/admin/reports?booking_id=${bId}`);
+                  }}
+                  className="px-3 py-2 bg-emerald-50 text-[#15803D] hover:bg-emerald-100 font-bold rounded-xl flex items-center space-x-1.5 transition text-xs"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Report</span>
+                </button>
+              </div>
+
               <div className="flex space-x-2">
                 <button
                   type="button"
@@ -519,6 +569,34 @@ export default function AdminBookingManagementPage() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Edit Booking Modal */}
+      {editingBooking && (
+        <EditBookingModal
+          isOpen={!!editingBooking}
+          onClose={() => setEditingBooking(null)}
+          booking={editingBooking}
+          onSuccess={() => {
+            setEditingBooking(null);
+            fetchBookings(true);
+          }}
+          isAdmin={true}
+        />
+      )}
+
+      {/* Delete Booking Confirmation Modal */}
+      {deletingBooking && (
+        <DeleteBookingConfirmModal
+          isOpen={!!deletingBooking}
+          onClose={() => setDeletingBooking(null)}
+          booking={deletingBooking}
+          onSuccess={() => {
+            setDeletingBooking(null);
+            fetchBookings(true);
+          }}
+          isAdmin={true}
+        />
       )}
     </div>
   );

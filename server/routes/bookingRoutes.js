@@ -9,5 +9,7 @@ router.get('/my-bookings', authenticateUser, bookingController.getUserBookings);
 router.get('/admin', authenticateAdmin, bookingController.getAllBookings);
 router.get('/:id', optionalAuth, bookingController.getBookingById);
 router.put('/:id/status', authenticateAdmin, bookingController.updateBookingStatus);
+router.put('/:id', authenticateUser, bookingController.updateBooking);
+router.delete('/:id', authenticateUser, bookingController.deleteBooking);
 
 module.exports = router;

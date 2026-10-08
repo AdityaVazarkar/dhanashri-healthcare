@@ -389,11 +389,184 @@ async function updateBookingStatus(req, res) {
   }
 }
 
+/**
+ * Update Booking Details (Patient or Admin)
+ */
+async function updateBooking(req, res) {
+  try {
+    const { id } = req.params;
+    const isNum = !isNaN(id);
+    const findQuery = isNum ? 'SELECT * FROM bookings WHERE id = $1' : 'SELECT * FROM bookings WHERE booking_code = $1';
+    const currentBookingRes = await pool.query(findQuery, [id]);
+
+    if (currentBookingRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found.' });
+    }
+
+    const booking = currentBookingRes.rows[0];
+
+    // Authorization check
+    if (!req.isAdmin && (!req.user || booking.user_id !== req.user.id)) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to update this booking.' });
+    }
+
+    // Normal users cannot edit already completed or cancelled bookings
+    if (!req.isAdmin && ['Completed', 'Cancelled'].includes(booking.booking_status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot edit a booking that is already marked as ${booking.booking_status}.`
+      });
+    }
+
+    const {
+      patient_name,
+      patient_age,
+      patient_gender,
+      patient_mobile,
+      appointment_date,
+      time_slot,
+      collection_type,
+      address,
+      landmark,
+      city,
+      pincode,
+      notes,
+      booking_status,
+      payment_status
+    } = req.body;
+
+    const allowedStatuses = ['Pending', 'Confirmed', 'Sample Collected', 'Processing', 'Report Ready', 'Completed', 'Cancelled'];
+    const newBookingStatus = (req.isAdmin && booking_status && allowedStatuses.includes(booking_status))
+      ? booking_status
+      : booking.booking_status;
+
+    const newPaymentStatus = (req.isAdmin && payment_status)
+      ? payment_status
+      : booking.payment_status;
+
+    const updated = await pool.query(`
+      UPDATE bookings
+      SET
+        patient_name = COALESCE($1, patient_name),
+        patient_age = COALESCE($2, patient_age),
+        patient_gender = COALESCE($3, patient_gender),
+        patient_mobile = COALESCE($4, patient_mobile),
+        appointment_date = COALESCE($5, appointment_date),
+        time_slot = COALESCE($6, time_slot),
+        collection_type = COALESCE($7, collection_type),
+        address = COALESCE($8, address),
+        landmark = COALESCE($9, landmark),
+        city = COALESCE($10, city),
+        pincode = COALESCE($11, pincode),
+        notes = COALESCE($12, notes),
+        booking_status = $13,
+        payment_status = $14,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $15
+      RETURNING *;
+    `, [
+      patient_name !== undefined ? patient_name.trim() : null,
+      patient_age !== undefined && patient_age !== '' ? parseInt(patient_age, 10) : null,
+      patient_gender !== undefined ? patient_gender : null,
+      patient_mobile !== undefined ? patient_mobile.trim() : null,
+      appointment_date !== undefined ? appointment_date : null,
+      time_slot !== undefined ? time_slot : null,
+      collection_type !== undefined ? collection_type : null,
+      address !== undefined ? address : null,
+      landmark !== undefined ? landmark : null,
+      city !== undefined ? city : null,
+      pincode !== undefined ? pincode : null,
+      notes !== undefined ? notes : null,
+      newBookingStatus,
+      newPaymentStatus,
+      booking.id
+    ]);
+
+    // Send notification if admin modified status or details
+    if (booking.user_id && req.isAdmin) {
+      const msg = newBookingStatus !== booking.booking_status
+        ? `Your booking (${booking.booking_code}) status has been updated to "${newBookingStatus}".`
+        : `Your booking (${booking.booking_code}) details have been updated by laboratory administration.`;
+      
+      await pool.query(`
+        INSERT INTO notifications (user_id, title, message, type, is_read, link)
+        VALUES ($1, 'Booking Details Updated', $2, 'booking', false, '/bookings');
+      `, [booking.user_id, msg]).catch(e => console.error('Notification error:', e));
+    }
+
+    return res.json({
+      success: true,
+      message: 'Booking updated successfully!',
+      booking: updated.rows[0]
+    });
+  } catch (error) {
+    console.error('Update booking error:', error);
+    return res.status(500).json({ success: false, message: 'Server error updating booking.' });
+  }
+}
+
+/**
+ * Delete Booking (Patient or Admin)
+ */
+async function deleteBooking(req, res) {
+  try {
+    const { id } = req.params;
+    const isNum = !isNaN(id);
+    const findQuery = isNum ? 'SELECT * FROM bookings WHERE id = $1' : 'SELECT * FROM bookings WHERE booking_code = $1';
+    const currentBookingRes = await pool.query(findQuery, [id]);
+
+    if (currentBookingRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found.' });
+    }
+
+    const booking = currentBookingRes.rows[0];
+
+    // Authorization check
+    if (!req.isAdmin && (!req.user || booking.user_id !== req.user.id)) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to delete this booking.' });
+    }
+
+    // Normal users cannot delete already completed bookings (they should keep their medical history)
+    if (!req.isAdmin && booking.booking_status === 'Completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Completed bookings with issued reports cannot be deleted. Please contact support.'
+      });
+    }
+
+    // Delete booking (CASCADE deletes booking_items, payments, reports)
+    await pool.query('DELETE FROM bookings WHERE id = $1', [booking.id]);
+
+    // Notify patient if deleted by admin
+    if (req.isAdmin && booking.user_id) {
+      await pool.query(`
+        INSERT INTO notifications (user_id, title, message, type, is_read, link)
+        VALUES ($1, 'Booking Cancelled & Removed', $2, 'booking', false, '/bookings');
+      `, [
+        booking.user_id,
+        `Your test booking (${booking.booking_code}) has been cancelled and removed by laboratory administration.`
+      ]).catch(e => console.error('Notification error:', e));
+    }
+
+    return res.json({
+      success: true,
+      message: 'Booking deleted successfully.',
+      deletedBookingId: booking.id,
+      bookingCode: booking.booking_code
+    });
+  } catch (error) {
+    console.error('Delete booking error:', error);
+    return res.status(500).json({ success: false, message: 'Server error deleting booking.' });
+  }
+}
+
 module.exports = {
   getTimeSlots,
   createBooking,
   getUserBookings,
   getBookingById,
   getAllBookings,
-  updateBookingStatus
+  updateBookingStatus,
+  updateBooking,
+  deleteBooking
 };
