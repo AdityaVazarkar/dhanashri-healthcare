@@ -12,6 +12,7 @@ import {
   LogOut,
   Activity,
   UserCheck,
+  ShieldCheck,
   X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
