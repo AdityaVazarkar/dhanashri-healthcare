@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Activity, ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
+import { Activity, ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -28,15 +29,16 @@ export default function AdminLoginPage() {
       navigate('/admin', { replace: true });
     } catch (err) {
       console.error('Admin login error:', err);
-      setError(err.message || 'Admin authentication failed.');
+      setError(err.response?.data?.message || err.message || 'Admin authentication failed. Please verify credentials.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFillDemoAdmin = () => {
-    setEmail('admin@lab.com');
+  const handleFillDemoAdmin = (fillEmail = 'admin@lab.com') => {
+    setEmail(fillEmail);
     setPassword('Admin@123');
+    setError('');
   };
 
   return (
@@ -67,32 +69,39 @@ export default function AdminLoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             <div className="space-y-1">
-              <label className="font-bold text-slate-300">Administrator Email</label>
+              <label className="font-bold text-slate-300 uppercase tracking-wider text-[11px]">Administrator Email or Username</label>
               <div className="relative flex items-center">
                 <Mail className="w-4 h-4 text-slate-500 ml-3 absolute pointer-events-none" />
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@lab.com"
+                  placeholder="admin@lab.com or admin@dhanashrilabs.com"
                   className="w-full py-3 pl-9 pr-3 rounded-xl border border-slate-700 bg-slate-900/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#16A34A]"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-slate-300">Admin Password</label>
+              <label className="font-bold text-slate-300 uppercase tracking-wider text-[11px]">Admin Password</label>
               <div className="relative flex items-center">
                 <Lock className="w-4 h-4 text-slate-500 ml-3 absolute pointer-events-none" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full py-3 pl-9 pr-3 rounded-xl border border-slate-700 bg-slate-900/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#16A34A]"
+                  className="w-full py-3 pl-9 pr-10 rounded-xl border border-slate-700 bg-slate-900/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#16A34A]"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 text-slate-400 hover:text-slate-200"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
@@ -107,14 +116,21 @@ export default function AdminLoginPage() {
           </form>
 
           {/* Quick Demo Credentials */}
-          <div className="pt-2 border-t border-slate-700/60">
+          <div className="pt-3 border-t border-slate-700/60 space-y-2">
             <button
               type="button"
-              onClick={handleFillDemoAdmin}
+              onClick={() => handleFillDemoAdmin('admin@lab.com')}
               className="w-full py-2.5 px-3 rounded-xl bg-slate-900/80 hover:bg-slate-900 border border-slate-700 text-xs font-bold text-emerald-400 transition flex items-center justify-center space-x-1.5"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Fill Demo Admin (admin@lab.com / Admin@123)</span>
+              <span>Fill Admin: admin@lab.com (Admin@123)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleFillDemoAdmin('admin@dhanashrilabs.com')}
+              className="w-full py-2 px-3 rounded-xl bg-slate-900/50 hover:bg-slate-900 border border-slate-700 text-[11px] font-semibold text-slate-300 transition flex items-center justify-center space-x-1.5"
+            >
+              <span>Or fill: admin@dhanashrilabs.com</span>
             </button>
           </div>
         </div>

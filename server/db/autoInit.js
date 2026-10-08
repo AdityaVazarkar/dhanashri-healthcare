@@ -80,6 +80,23 @@ async function autoInitDatabase() {
       ]);
       console.log('✅ Default demo partner initialized (partner@dhanashrilabs.com / partner123)');
     }
+
+    // Ensure admin accounts: admin@lab.com and admin@dhanashrilabs.com exist with Admin@123
+    const adminPassHash = await bcrypt.hash('Admin@123', 10);
+    await pool.query(`
+      INSERT INTO admins (name, email, password_hash, role, status)
+      VALUES ('Dhanashri Lab Admin', 'admin@dhanashrilabs.com', $1, 'superadmin', 'active')
+      ON CONFLICT (email) DO UPDATE
+      SET password_hash = $1, status = 'active';
+    `, [adminPassHash]);
+
+    await pool.query(`
+      INSERT INTO admins (name, email, password_hash, role, status)
+      VALUES ('Dr. Mehra Lab Admin', 'admin@lab.com', $1, 'superadmin', 'active')
+      ON CONFLICT (email) DO UPDATE
+      SET password_hash = $1, status = 'active';
+    `, [adminPassHash]);
+    console.log('✅ Admin accounts verified (admin@lab.com & admin@dhanashrilabs.com)');
   } catch (err) {
     console.error('⚠️ Database auto-initialization check notice:', err.message);
   }

@@ -18,6 +18,9 @@ const partnerRoutes = require('./routes/partnerRoutes');
 
 const app = express();
 
+// Trust reverse proxies (Vercel, Render, AWS, Nginx)
+app.set('trust proxy', 1);
+
 // Security Middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
@@ -47,10 +50,11 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 // Rate limiter for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 auth requests per windowMs
+  max: 500, // Generous limit for authentication
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: 'Too many authentication attempts. Please try again after 15 minutes.' }
+  validate: { xForwardedForHeader: false, default: false },
+  message: { success: false, message: 'Too many authentication attempts. Please try again after a few minutes.' }
 });
 
 // Mount Routes
