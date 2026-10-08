@@ -11,10 +11,15 @@ async function seed() {
   try {
     await client.query('BEGIN');
 
-    // Ensure uploads directory exists
-    const uploadsDir = path.join(__dirname, '..', 'uploads', 'reports');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    // Ensure uploads directory exists if writable
+    try {
+      const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+      const uploadsDir = isServerless ? path.join(require('os').tmpdir(), 'uploads', 'reports') : path.join(__dirname, '..', 'uploads', 'reports');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+    } catch (e) {
+      // Ignore on read-only serverless filesystem
     }
 
     // 1. Seed Admin
