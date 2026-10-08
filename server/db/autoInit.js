@@ -36,6 +36,50 @@ async function autoInitDatabase() {
     } else {
       console.log('✅ Database connection and schema verified.');
     }
+
+    // Ensure partners table and booking partner columns exist (Idempotent Migration)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS partners (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(150) NOT NULL,
+        email VARCHAR(150) UNIQUE NOT NULL,
+        mobile VARCHAR(20) NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        city VARCHAR(100) DEFAULT 'Bengaluru',
+        area VARCHAR(150),
+        commission_rate NUMERIC(5, 2) DEFAULT 15.00,
+        fixed_fee NUMERIC(10, 2) DEFAULT 0.00,
+        status VARCHAR(20) DEFAULT 'active',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS partner_id INTEGER REFERENCES partners(id) ON DELETE SET NULL;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS partner_assigned_at TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sample_collected_at TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS partner_notes TEXT;
+      CREATE INDEX IF NOT EXISTS idx_bookings_partner ON bookings(partner_id);
+    `);
+
+    // Ensure default demo partner exists
+    const partnerCheck = await pool.query("SELECT id FROM partners WHERE email = 'partner@dhanashrilabs.com'");
+    if (partnerCheck.rows.length === 0) {
+      const hashedPartnerPass = await bcrypt.hash('partner123', 10);
+      await pool.query(`
+        INSERT INTO partners (name, email, mobile, password_hash, city, area, commission_rate, fixed_fee, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active');
+      `, [
+        'Ramesh Kumar (Phlebotomist)',
+        'partner@dhanashrilabs.com',
+        '+91 98765 43210',
+        hashedPartnerPass,
+        'Bengaluru',
+        'Indiranagar & Koramangala',
+        15.00,
+        50.00
+      ]);
+      console.log('✅ Default demo partner initialized (partner@dhanashrilabs.com / partner123)');
+    }
   } catch (err) {
     console.error('⚠️ Database auto-initialization check notice:', err.message);
   }

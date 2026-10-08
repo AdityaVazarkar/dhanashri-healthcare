@@ -84,6 +84,48 @@ async function authenticateAdmin(req, res, next) {
 }
 
 /**
+ * Authenticate sample collection partner
+ */
+async function authenticatePartner(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'Partner authentication required. Please login.' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    if (decoded.role !== 'partner') {
+      return res.status(403).json({ success: false, message: 'Access denied. Sample partner credentials required.' });
+    }
+
+    const partnerRes = await pool.query(
+      'SELECT id, name, email, mobile, city, area, commission_rate, fixed_fee, status FROM partners WHERE id = $1',
+      [decoded.id]
+    );
+
+    if (partnerRes.rows.length === 0) {
+      return res.status(401).json({ success: false, message: 'Partner profile not found.' });
+    }
+
+    const partner = partnerRes.rows[0];
+    if (partner.status !== 'active') {
+      return res.status(403).json({ success: false, message: 'Partner account is deactivated. Please contact lab admin.' });
+    }
+
+    req.partner = partner;
+    req.user = partner;
+    next();
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ success: false, message: 'Partner session expired. Please login again.' });
+    }
+    return res.status(401).json({ success: false, message: 'Invalid partner token.' });
+  }
+}
+
+/**
  * Optional authentication (allows guest or logged-in user)
  */
 async function optionalAuth(req, res, next) {
@@ -111,6 +153,7 @@ async function optionalAuth(req, res, next) {
 module.exports = {
   authenticateUser,
   authenticateAdmin,
+  authenticatePartner,
   optionalAuth,
   JWT_SECRET
 };

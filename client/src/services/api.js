@@ -21,6 +21,29 @@ api.interceptors.request.use(
 
     const adminToken = localStorage.getItem('dhanashri_admin_token') || localStorage.getItem('pulsebio_admin_token');
     const userToken = localStorage.getItem('dhanashri_user_token') || localStorage.getItem('pulsebio_user_token');
+    const partnerToken = localStorage.getItem('dhanashri_partner_token');
+
+    // Check if request is in partner context
+    const hasPartnerHeader = Boolean(
+      (typeof config.headers?.get === 'function' && 
+        (config.headers.get('X-Partner-Request') || config.headers.get('x-partner-request'))) ||
+      config.headers?.['X-Partner-Request'] ||
+      config.headers?.['x-partner-request']
+    );
+
+    const isPartnerUrl = Boolean(
+      config.url && (
+        config.url.startsWith('/partners/profile') ||
+        config.url.startsWith('/partners/assigned-bookings') ||
+        config.url.includes('/partners/bookings')
+      )
+    );
+
+    const isOnPartnerPage = typeof window !== 'undefined' && 
+      window.location && 
+      window.location.pathname.startsWith('/partner');
+
+    const isPartnerContext = hasPartnerHeader || isPartnerUrl || isOnPartnerPage;
 
     // Check if request is in an admin context
     const hasAdminHeader = Boolean(
@@ -44,10 +67,15 @@ api.interceptors.request.use(
 
     const isAdminContext = hasAdminHeader || isAdminUrl || isOnAdminPage;
 
-    // Use admin token for admin context, user token otherwise
-    const token = isAdminContext 
-      ? (adminToken || userToken) 
-      : (userToken || adminToken);
+    // Determine appropriate token
+    let token = userToken;
+    if (isPartnerContext && partnerToken) {
+      token = partnerToken;
+    } else if (isAdminContext) {
+      token = adminToken || userToken;
+    } else {
+      token = userToken || adminToken;
+    }
 
     if (token) {
       if (typeof config.headers?.set === 'function') {

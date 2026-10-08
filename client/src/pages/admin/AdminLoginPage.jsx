@@ -119,9 +119,12 @@ export default function AdminLoginPage() {
           </div>
         </div>
 
-        <div className="text-center text-xs text-slate-400">
+        <div className="flex items-center justify-between text-xs text-slate-400">
           <Link to="/" className="text-slate-400 hover:text-white transition">
-            ← Return to Patient Portal
+            ← Patient Portal
+          </Link>
+          <Link to="/partner/login" className="text-emerald-400 hover:text-emerald-300 font-bold transition">
+            Partner Portal →
           </Link>
         </div>
       </div>

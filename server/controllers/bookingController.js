@@ -217,6 +217,7 @@ async function getBookingById(req, res) {
       SELECT 
         b.*,
         u.email AS user_email, u.full_name AS user_name,
+        p.name AS partner_name, p.mobile AS partner_mobile, p.email AS partner_email,
         COALESCE(
           json_agg(
             json_build_object(
@@ -231,9 +232,10 @@ async function getBookingById(req, res) {
         ) AS items
       FROM bookings b
       LEFT JOIN users u ON u.id = b.user_id
+      LEFT JOIN partners p ON p.id = b.partner_id
       LEFT JOIN booking_items bi ON bi.booking_id = b.id
       WHERE ${whereClause}
-      GROUP BY b.id, u.email, u.full_name;
+      GROUP BY b.id, u.email, u.full_name, p.name, p.mobile, p.email;
     `;
 
     const result = await pool.query(queryText, values);
@@ -264,13 +266,14 @@ async function getBookingById(req, res) {
  */
 async function getAllBookings(req, res) {
   try {
-    const { status, search, userId, limit = 50, page = 1 } = req.query;
+    const { status, search, userId, partnerId, limit = 50, page = 1 } = req.query;
     const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
     let queryText = `
       SELECT 
         b.*,
         u.full_name AS user_name, u.email AS user_email, u.mobile AS user_mobile,
+        p.name AS partner_name, p.mobile AS partner_mobile, p.email AS partner_email, p.commission_rate AS partner_commission_rate,
         COALESCE(
           json_agg(
             json_build_object(
@@ -286,6 +289,7 @@ async function getAllBookings(req, res) {
         COUNT(r.id)::int AS report_count
       FROM bookings b
       LEFT JOIN users u ON u.id = b.user_id
+      LEFT JOIN partners p ON p.id = b.partner_id
       LEFT JOIN booking_items bi ON bi.booking_id = b.id
       LEFT JOIN reports r ON r.booking_id = b.id
       WHERE 1=1
@@ -304,6 +308,15 @@ async function getAllBookings(req, res) {
       values.push(parseInt(userId, 10));
     }
 
+    if (partnerId && partnerId !== 'all') {
+      if (partnerId === 'unassigned') {
+        queryText += ` AND b.partner_id IS NULL`;
+      } else {
+        queryText += ` AND b.partner_id = $${valIndex++}`;
+        values.push(parseInt(partnerId, 10));
+      }
+    }
+
     if (search && search.trim()) {
       const term = `%${search.trim().toLowerCase()}%`;
       queryText += ` AND (
@@ -312,6 +325,7 @@ async function getAllBookings(req, res) {
         OR b.patient_mobile LIKE $${valIndex}
         OR LOWER(COALESCE(u.full_name, '')) LIKE $${valIndex}
         OR LOWER(COALESCE(u.email, '')) LIKE $${valIndex}
+        OR LOWER(COALESCE(p.name, '')) LIKE $${valIndex}
         OR EXISTS (
           SELECT 1 FROM booking_items bi_sub 
           WHERE bi_sub.booking_id = b.id 
@@ -322,7 +336,7 @@ async function getAllBookings(req, res) {
       valIndex++;
     }
 
-    queryText += ` GROUP BY b.id, u.full_name, u.email, u.mobile ORDER BY b.created_at DESC LIMIT $${valIndex++} OFFSET $${valIndex++};`;
+    queryText += ` GROUP BY b.id, u.full_name, u.email, u.mobile, p.name, p.mobile, p.email, p.commission_rate ORDER BY b.created_at DESC LIMIT $${valIndex++} OFFSET $${valIndex++};`;
     values.push(parseInt(limit, 10), offset);
 
     const result = await pool.query(queryText, values);

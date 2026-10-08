@@ -6,6 +6,7 @@ import { CartProvider } from './context/CartContext';
 // Layouts
 import PatientLayout from './layouts/PatientLayout';
 import AdminLayout from './layouts/AdminLayout';
+import PartnerLayout from './layouts/PartnerLayout';
 
 // Public & Patient Pages
 import LandingPage from './pages/LandingPage';
@@ -25,9 +26,14 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 
+// Partner Pages
+import PartnerLoginPage from './pages/partner/PartnerLoginPage';
+import PartnerDashboardPage from './pages/partner/PartnerDashboardPage';
+
 // Admin Pages
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminPartnerManagementPage from './pages/admin/AdminPartnerManagementPage';
 import AdminTestManagementPage from './pages/admin/AdminTestManagementPage';
 import AdminCategoryManagementPage from './pages/admin/AdminCategoryManagementPage';
 import AdminPackageManagementPage from './pages/admin/AdminPackageManagementPage';
@@ -53,6 +59,16 @@ function ProtectedUserRoute({ children }) {
         replace
       />
     );
+  }
+  return children;
+}
+
+// Partner Protected Route Guard
+function ProtectedPartnerRoute({ children }) {
+  const { isPartnerAuthenticated, loading } = useAuth();
+  if (loading) return null;
+  if (!isPartnerAuthenticated) {
+    return <Navigate to="/partner/login" replace />;
   }
   return children;
 }
@@ -126,12 +142,27 @@ export default function App() {
               <Route path="reset-password" element={<ResetPasswordPage />} />
             </Route>
 
+            {/* Partner Portal Routes */}
+            <Route path="/partner/login" element={<PartnerLoginPage />} />
+            <Route
+              path="/partner"
+              element={
+                <ProtectedPartnerRoute>
+                  <PartnerLayout />
+                </ProtectedPartnerRoute>
+              }
+            >
+              <Route index element={<Navigate to="/partner/dashboard" replace />} />
+              <Route path="dashboard" element={<PartnerDashboardPage />} />
+            </Route>
+
             {/* Admin Portal Authentication */}
             <Route path="/admin/login" element={<AdminLoginPage />} />
 
             {/* Admin Dashboard Protected Routes */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboardPage />} />
+              <Route path="partners" element={<AdminPartnerManagementPage />} />
               <Route path="tests" element={<AdminTestManagementPage />} />
               <Route path="categories" element={<AdminCategoryManagementPage />} />
               <Route path="packages" element={<AdminPackageManagementPage />} />

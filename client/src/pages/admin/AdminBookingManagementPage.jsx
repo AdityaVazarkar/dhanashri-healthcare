@@ -13,6 +13,7 @@ import {
   RefreshCw,
   FileText,
   User,
+  UserCheck,
   Edit3,
   Trash2
 } from 'lucide-react';
@@ -37,12 +38,14 @@ export default function AdminBookingManagementPage() {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [users, setUsers] = useState([]);
+  const [partners, setPartners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [userFilter, setUserFilter] = useState('all');
+  const [partnerFilter, setPartnerFilter] = useState('all');
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -52,19 +55,26 @@ export default function AdminBookingManagementPage() {
   const [newStatus, setNewStatus] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
 
-  // Fetch users for user filter dropdown
+  // Partner assignment state
+  const [assigningBooking, setAssigningBooking] = useState(null);
+  const [assignPartnerId, setAssignPartnerId] = useState('');
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
+
+  // Fetch users and partners for filter dropdowns
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchFilterData = async () => {
       try {
-        const res = await api.get('/users?limit=200', {
-          headers: { 'X-Admin-Request': 'true' }
-        });
-        setUsers(res.data.users || []);
+        const [usersRes, partnersRes] = await Promise.all([
+          api.get('/users?limit=200', { headers: { 'X-Admin-Request': 'true' } }),
+          api.get('/partners/quick-list', { headers: { 'X-Admin-Request': 'true' } })
+        ]);
+        setUsers(usersRes.data.users || []);
+        setPartners(partnersRes.data.partners || []);
       } catch (err) {
-        console.error('Failed to load users for filter:', err);
+        console.error('Failed to load users/partners for filter:', err);
       }
     };
-    fetchUsers();
+    fetchFilterData();
   }, []);
 
   const fetchBookings = async (isManual = false) => {
@@ -74,6 +84,7 @@ export default function AdminBookingManagementPage() {
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (userFilter !== 'all') params.append('userId', userFilter);
+      if (partnerFilter !== 'all') params.append('partnerId', partnerFilter);
       if (search.trim()) params.append('search', search.trim());
 
       const res = await api.get(`/bookings/admin?${params.toString()}`, {
@@ -92,7 +103,7 @@ export default function AdminBookingManagementPage() {
 
   useEffect(() => {
     fetchBookings();
-  }, [statusFilter, userFilter]);
+  }, [statusFilter, userFilter, partnerFilter]);
 
   // Auto-refresh polling every 12 seconds so new patient bookings appear live
   useEffect(() => {
@@ -100,7 +111,44 @@ export default function AdminBookingManagementPage() {
       fetchBookings(false);
     }, 12000);
     return () => clearInterval(interval);
-  }, [statusFilter, userFilter, search]);
+  }, [statusFilter, userFilter, partnerFilter, search]);
+
+  const handleOpenAssignModal = (b) => {
+    setAssigningBooking(b);
+    setAssignPartnerId(b.partner_id ? b.partner_id.toString() : '');
+  };
+
+  const handleSavePartnerAssignment = async (e) => {
+    e?.preventDefault();
+    if (!assigningBooking) return;
+
+    setAssignSubmitting(true);
+    try {
+      await api.post('/partners/admin/assign', {
+        booking_id: assigningBooking.id,
+        partner_id: assignPartnerId ? parseInt(assignPartnerId, 10) : null
+      }, {
+        headers: { 'X-Admin-Request': 'true' }
+      });
+
+      setAssigningBooking(null);
+      if (selectedBooking && selectedBooking.id === assigningBooking.id) {
+        // Update selected booking's partner info in detail view as well
+        const selectedPartnerObj = partners.find(p => p.id === parseInt(assignPartnerId, 10));
+        setSelectedBooking({
+          ...selectedBooking,
+          partner_id: assignPartnerId ? parseInt(assignPartnerId, 10) : null,
+          partner_name: selectedPartnerObj ? selectedPartnerObj.name : null,
+          partner_mobile: selectedPartnerObj ? selectedPartnerObj.mobile : null
+        });
+      }
+      fetchBookings(true);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to assign partner.');
+    } finally {
+      setAssignSubmitting(false);
+    }
+  };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -241,9 +289,28 @@ export default function AdminBookingManagementPage() {
             </select>
           </div>
 
-          {(search || statusFilter !== 'all' || userFilter !== 'all') && (
+          {/* Filter by Partner / Collector */}
+          <div className="flex items-center space-x-1.5 flex-1 sm:flex-initial">
+            <UserCheck className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+            <select
+              value={partnerFilter}
+              onChange={(e) => setPartnerFilter(e.target.value)}
+              className="w-full sm:w-48 p-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none"
+              title="Filter by assigned sample collection partner"
+            >
+              <option value="all">All Partners</option>
+              <option value="unassigned">⚠️ Unassigned Only</option>
+              {partners.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.commission_rate}%)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {(search || statusFilter !== 'all' || userFilter !== 'all' || partnerFilter !== 'all') && (
             <button
-              onClick={() => { setSearch(''); setStatusFilter('all'); setUserFilter('all'); }}
+              onClick={() => { setSearch(''); setStatusFilter('all'); setUserFilter('all'); setPartnerFilter('all'); }}
               className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
             >
               Reset
@@ -269,23 +336,24 @@ export default function AdminBookingManagementPage() {
                   <th className="py-3 px-4 font-bold">Amount</th>
                   <th className="py-3 px-4 font-bold">Payment</th>
                   <th className="py-3 px-4 font-bold">Status</th>
+                  <th className="py-3 px-4 font-bold">Partner / Collector</th>
                   <th className="py-3 px-4 text-right font-bold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {bookings.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="py-12 text-center text-slate-400">
+                    <td colSpan="10" className="py-12 text-center text-slate-400">
                       <CalendarCheck className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                       <p className="font-semibold text-slate-700 text-sm">No patient bookings found</p>
                       <p className="text-xs text-slate-400 mt-1">
-                        {search || statusFilter !== 'all' || userFilter !== 'all'
+                        {search || statusFilter !== 'all' || userFilter !== 'all' || partnerFilter !== 'all'
                           ? 'Try adjusting your search criteria or filter options.'
                           : 'Appointments placed by patients will appear here in real-time.'}
                       </p>
-                      {(search || statusFilter !== 'all' || userFilter !== 'all') && (
+                      {(search || statusFilter !== 'all' || userFilter !== 'all' || partnerFilter !== 'all') && (
                         <button
-                          onClick={() => { setSearch(''); setStatusFilter('all'); setUserFilter('all'); }}
+                          onClick={() => { setSearch(''); setStatusFilter('all'); setUserFilter('all'); setPartnerFilter('all'); }}
                           className="mt-3 px-3 py-1.5 rounded-lg bg-emerald-50 text-[#15803D] font-bold text-xs hover:bg-emerald-100 transition"
                         >
                           Clear Filters
@@ -365,6 +433,35 @@ export default function AdminBookingManagementPage() {
                       <td className="py-3 px-4">
                         <StatusBadge status={b.booking_status} />
                       </td>
+                      <td className="py-3 px-4">
+                        {b.partner_name ? (
+                          <div className="flex items-center space-x-1.5">
+                            <span
+                              className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200/80 inline-flex items-center space-x-1"
+                              title={`Collector: ${b.partner_name} (${b.partner_mobile || ''})`}
+                            >
+                              <UserCheck className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                              <span className="truncate max-w-[95px]">{b.partner_name}</span>
+                            </span>
+                            <button
+                              onClick={() => handleOpenAssignModal(b)}
+                              className="text-[10px] text-slate-400 hover:text-emerald-700 underline font-semibold"
+                              title="Change assigned partner"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenAssignModal(b)}
+                            className="px-2 py-0.5 rounded-lg border border-dashed border-slate-300 hover:border-emerald-500 text-slate-500 hover:text-emerald-700 text-[11px] font-bold transition inline-flex items-center space-x-1 bg-white hover:bg-emerald-50/50"
+                            title="Assign a sample collection partner"
+                          >
+                            <UserCheck className="w-3 h-3 text-slate-400" />
+                            <span>+ Assign</span>
+                          </button>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end space-x-1.5">
                           <button
@@ -433,6 +530,26 @@ export default function AdminBookingManagementPage() {
                     <span className="text-slate-500">Direct / Guest</span>
                   )}
                 </div>
+              </div>
+              <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                <div>
+                  <strong>Assigned Collector / Partner:</strong>{' '}
+                  {selectedBooking.partner_name ? (
+                    <span className="text-emerald-700 font-bold">
+                      {selectedBooking.partner_name} ({selectedBooking.partner_mobile})
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 font-bold">Not Assigned</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleOpenAssignModal(selectedBooking)}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-bold text-[11px] border border-emerald-200 flex items-center space-x-1"
+                >
+                  <UserCheck className="w-3 h-3" />
+                  <span>{selectedBooking.partner_name ? 'Change Partner' : 'Assign Partner'}</span>
+                </button>
               </div>
               {selectedBooking.address && (
                 <div className="pt-2 border-t border-slate-200">
@@ -597,6 +714,57 @@ export default function AdminBookingManagementPage() {
           }}
           isAdmin={true}
         />
+      )}
+
+      {/* Assign Partner to Booking Modal */}
+      {assigningBooking && (
+        <Modal
+          isOpen={!!assigningBooking}
+          onClose={() => setAssigningBooking(null)}
+          title={`Assign Partner: ${assigningBooking.booking_code}`}
+          subtitle={`Patient: ${assigningBooking.patient_name} • Schedule: ${formatScheduleDate(assigningBooking.appointment_date)} (${assigningBooking.time_slot})`}
+          maxWidth="max-w-md"
+        >
+          <form onSubmit={handleSavePartnerAssignment} className="space-y-4 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                Select Phlebotomist / Partner
+              </label>
+              <select
+                value={assignPartnerId}
+                onChange={(e) => setAssignPartnerId(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              >
+                <option value="">-- Unassigned (No Partner) --</option>
+                {partners.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.mobile}) — {p.area || p.city} • {p.commission_rate}% Comm
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-slate-400 mt-1">
+                When assigned, this patient's visit will appear directly in the partner's portal, and the patient will receive a notification with the collector's contact details.
+              </p>
+            </div>
+
+            <div className="pt-3 border-t border-slate-200 flex justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setAssigningBooking(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={assignSubmitting}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-sm disabled:opacity-50"
+              >
+                {assignSubmitting ? 'Saving...' : 'Save Assignment'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );

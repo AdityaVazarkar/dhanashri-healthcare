@@ -11,7 +11,7 @@ import {
   Bell,
   LogOut,
   Activity,
-  ShieldCheck,
+  UserCheck,
   X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -29,6 +29,7 @@ export default function AdminSidebar({ isOpen, setIsOpen }) {
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { name: 'Users', path: '/admin/users', icon: Users },
+    { name: 'Partners', path: '/admin/partners', icon: UserCheck },
     { name: 'Tests', path: '/admin/tests', icon: FlaskConical },
     { name: 'Categories', path: '/admin/categories', icon: FolderTree },
     { name: 'Packages', path: '/admin/packages', icon: Package },

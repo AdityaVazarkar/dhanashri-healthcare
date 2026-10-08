@@ -14,6 +14,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const userRoutes = require('./routes/userRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const partnerRoutes = require('./routes/partnerRoutes');
 
 const app = express();
 
@@ -36,7 +37,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Request', 'x-admin-request']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Request', 'x-admin-request', 'X-Partner-Request', 'x-partner-request']
 }));
 
 // Body Parsers
@@ -62,6 +63,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/partners', partnerRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

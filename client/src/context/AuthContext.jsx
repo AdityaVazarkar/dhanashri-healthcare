@@ -6,19 +6,24 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [admin, setAdmin] = useState(null);
+  const [partner, setPartner] = useState(null);
   const [token, setToken] = useState(
     localStorage.getItem('dhanashri_user_token') || localStorage.getItem('pulsebio_user_token')
   );
   const [adminToken, setAdminToken] = useState(
     localStorage.getItem('dhanashri_admin_token') || localStorage.getItem('pulsebio_admin_token')
   );
+  const [partnerToken, setPartnerToken] = useState(
+    localStorage.getItem('dhanashri_partner_token')
+  );
   const [loading, setLoading] = useState(true);
 
-  // Initialize and verify user auth once on mount
+  // Initialize and verify user, admin, partner auth once on mount
   useEffect(() => {
     const initAuth = async () => {
       const savedUserToken = localStorage.getItem('dhanashri_user_token') || localStorage.getItem('pulsebio_user_token');
       const savedAdminToken = localStorage.getItem('dhanashri_admin_token') || localStorage.getItem('pulsebio_admin_token');
+      const savedPartnerToken = localStorage.getItem('dhanashri_partner_token');
 
       if (savedUserToken) {
         try {
@@ -52,6 +57,25 @@ export const AuthProvider = ({ children }) => {
         } catch (err) {
           console.warn('Admin token expired or invalid');
           adminLogout();
+        }
+      }
+
+      if (savedPartnerToken) {
+        try {
+          const res = await api.get('/partners/profile', {
+            headers: {
+              Authorization: `Bearer ${savedPartnerToken}`,
+              'X-Partner-Request': 'true'
+            }
+          });
+          if (res.data.success) {
+            setPartner(res.data.partner);
+          } else {
+            partnerLogout();
+          }
+        } catch (err) {
+          console.warn('Partner token expired or invalid');
+          partnerLogout();
         }
       }
 
@@ -116,6 +140,25 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('pulsebio_admin_token');
   };
 
+  // Partner Login
+  const partnerLogin = async (identifier, password) => {
+    const res = await api.post('/partners/login', { identifier, password });
+    if (res.data.success) {
+      setPartner(res.data.partner);
+      setPartnerToken(res.data.token);
+      localStorage.setItem('dhanashri_partner_token', res.data.token);
+      return res.data;
+    }
+    throw new Error(res.data.message || 'Partner login failed');
+  };
+
+  // Partner Logout
+  const partnerLogout = () => {
+    setPartner(null);
+    setPartnerToken(null);
+    localStorage.removeItem('dhanashri_partner_token');
+  };
+
   // Update profile
   const updateProfile = async (profileData) => {
     const res = await api.put('/auth/profile', profileData);
@@ -135,12 +178,18 @@ export const AuthProvider = ({ children }) => {
         admin,
         adminToken,
         isAdminAuthenticated: !!admin,
+        partner,
+        partnerToken,
+        isPartnerAuthenticated: !!partner,
         loading,
         login,
         register,
         logout,
         adminLogin,
         adminLogout,
+        partnerLogin,
+        partnerLogout,
+        setPartner,
         updateProfile,
       }}
     >

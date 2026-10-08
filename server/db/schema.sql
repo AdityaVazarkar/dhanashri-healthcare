@@ -132,11 +132,28 @@ CREATE TABLE IF NOT EXISTS time_slots (
     is_active BOOLEAN DEFAULT TRUE
 );
 
+-- Partners / Sample Collection Agents
+CREATE TABLE IF NOT EXISTS partners (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    mobile VARCHAR(20) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    city VARCHAR(100) DEFAULT 'Bengaluru',
+    area VARCHAR(150),
+    commission_rate NUMERIC(5, 2) DEFAULT 15.00, -- percentage (e.g. 15.00%)
+    fixed_fee NUMERIC(10, 2) DEFAULT 0.00, -- flat fee per collection in INR
+    status VARCHAR(20) DEFAULT 'active', -- active, inactive
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Bookings
 CREATE TABLE IF NOT EXISTS bookings (
     id SERIAL PRIMARY KEY,
     booking_code VARCHAR(50) UNIQUE NOT NULL,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    partner_id INTEGER REFERENCES partners(id) ON DELETE SET NULL,
     patient_name VARCHAR(150) NOT NULL,
     patient_age INTEGER NOT NULL,
     patient_gender VARCHAR(20) NOT NULL,
@@ -154,6 +171,9 @@ CREATE TABLE IF NOT EXISTS bookings (
     payment_method VARCHAR(50) DEFAULT 'Cash on Collection', -- 'Cash on Collection', 'Pay at Lab', 'Online Payment'
     payment_status VARCHAR(50) DEFAULT 'Pending', -- 'Pending', 'Paid', 'Refunded'
     booking_status VARCHAR(50) DEFAULT 'Pending', -- 'Pending', 'Confirmed', 'Sample Collected', 'Processing', 'Report Ready', 'Completed', 'Cancelled'
+    partner_assigned_at TIMESTAMP WITH TIME ZONE,
+    sample_collected_at TIMESTAMP WITH TIME ZONE,
+    partner_notes TEXT,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -234,6 +254,7 @@ CREATE INDEX IF NOT EXISTS idx_users_mobile ON users(mobile);
 CREATE INDEX IF NOT EXISTS idx_tests_category ON tests(category_id);
 CREATE INDEX IF NOT EXISTS idx_tests_status ON tests(status);
 CREATE INDEX IF NOT EXISTS idx_bookings_user ON bookings(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_partner ON bookings(partner_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(booking_status);
 CREATE INDEX IF NOT EXISTS idx_reports_booking ON reports(booking_id);
 CREATE INDEX IF NOT EXISTS idx_reports_user ON reports(user_id);

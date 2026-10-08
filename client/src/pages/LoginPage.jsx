@@ -145,6 +145,12 @@ export default function LoginPage() {
               Admin Portal
             </Link>
           </div>
+          <div className="pt-1">
+            Are you a sample collector?{' '}
+            <Link to="/partner/login" className="font-bold text-emerald-700 hover:underline">
+              Partner Portal
+            </Link>
+          </div>
         </div>
       </div>
     </div>
