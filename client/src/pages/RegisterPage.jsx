@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Activity, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Activity, AlertCircle, ArrowRight, CheckCircle2, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function RegisterPage() {
@@ -18,6 +18,11 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const redirectParam = searchParams.get('redirect');
+  const from = location.state?.from?.pathname || location.state?.from || redirectParam || '/dashboard';
+  const infoMessage = location.state?.message || (from === '/book' ? 'To book a test, new patients need to register first. You will be redirected right back to complete your booking.' : '');
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -40,7 +45,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(formData);
-      navigate('/dashboard');
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err.message || 'Registration failed.');
     } finally {
@@ -61,6 +66,17 @@ export default function RegisterPage() {
           <h2 className="text-2xl font-black text-slate-900">Create Patient Account</h2>
           <p className="text-xs text-slate-500">Register to schedule blood collections and track verified diagnostic reports.</p>
         </div>
+
+        {/* Info banner when redirected from booking */}
+        {infoMessage && (
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-[#15803D] flex items-start space-x-2.5 shadow-sm">
+            <Sparkles className="w-4 h-4 mt-0.5 shrink-0 text-[#16A34A]" />
+            <div>
+              <span className="font-bold block">New Patient Registration</span>
+              <span>{infoMessage}</span>
+            </div>
+          </div>
+        )}
 
         <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-xl space-y-5">
           {error && (
@@ -180,7 +196,11 @@ export default function RegisterPage() {
 
         <div className="text-center text-xs text-slate-500">
           Already have an account?{' '}
-          <Link to="/login" className="font-bold text-[#16A34A] hover:underline">
+          <Link
+            to="/login"
+            state={{ from, message: infoMessage }}
+            className="font-bold text-[#16A34A] hover:underline"
+          >
             Sign In here
           </Link>
         </div>

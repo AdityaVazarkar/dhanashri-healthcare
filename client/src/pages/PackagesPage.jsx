@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { CheckCircle2, ShieldCheck, Clock, ArrowRight, Sparkles, AlertCircle } from 'lucide-react';
 import api from '../services/api';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 export default function PackagesPage() {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,7 +29,16 @@ export default function PackagesPage() {
 
   const handleBookPackage = (pkg) => {
     addToCart(pkg, 'package');
-    navigate('/book');
+    if (!isAuthenticated) {
+      navigate('/login', {
+        state: {
+          from: '/book',
+          message: 'To book a test, please log in. If you are a new patient, please register first.'
+        }
+      });
+    } else {
+      navigate('/book');
+    }
   };
 
   return (

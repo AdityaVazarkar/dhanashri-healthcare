@@ -144,6 +144,16 @@ export default function BookingFlowPage() {
   };
 
   const handleConfirmBooking = async () => {
+    if (!isAuthenticated) {
+      navigate('/login', {
+        state: {
+          from: '/book',
+          message: 'To book a test, please log in. If you are a new patient, please register first.'
+        }
+      });
+      return;
+    }
+
     setErrorMsg('');
     setLoading(true);
     try {
@@ -182,6 +192,38 @@ export default function BookingFlowPage() {
       setLoading(false);
     }
   };
+
+  if (!isAuthenticated && !bookingConfirmed) {
+    return (
+      <div className="max-w-xl mx-auto py-20 px-4 text-center space-y-5">
+        <div className="w-16 h-16 mx-auto rounded-3xl bg-emerald-50 text-[#16A34A] flex items-center justify-center shadow-sm">
+          <User className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-black text-slate-900">Please Sign In to Book Your Test</h2>
+          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+            To schedule diagnostic appointments and securely receive lab reports, an authenticated patient account is required. If you are a new patient, please register first.
+          </p>
+        </div>
+        <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            to="/login"
+            state={{ from: '/book', message: 'To book a test, please log in. If you are a new patient, please register first.' }}
+            className="w-full sm:w-auto px-6 py-3 bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-bold rounded-xl shadow-md transition"
+          >
+            Sign In to Your Account
+          </Link>
+          <Link
+            to="/register"
+            state={{ from: '/book', message: 'To book a test, new patients need to register first.' }}
+            className="w-full sm:w-auto px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition"
+          >
+            New Patient? Register Here
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (cartItems.length === 0 && !bookingConfirmed) {
     return (

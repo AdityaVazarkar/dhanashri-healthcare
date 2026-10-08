@@ -12,7 +12,10 @@ export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || '/dashboard';
+  const searchParams = new URLSearchParams(location.search);
+  const redirectParam = searchParams.get('redirect');
+  const from = location.state?.from?.pathname || location.state?.from || redirectParam || '/dashboard';
+  const infoMessage = location.state?.message || (from === '/book' ? 'To book a test, please log in. If you are a new patient, please register first.' : '');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,6 +51,17 @@ export default function LoginPage() {
           <h2 className="text-2xl font-black text-slate-900">Welcome Back</h2>
           <p className="text-xs text-slate-500">Sign in to access your appointments and medical reports.</p>
         </div>
+
+        {/* Info banner when redirected from booking */}
+        {infoMessage && (
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-[#15803D] flex items-start space-x-2.5 shadow-sm">
+            <Sparkles className="w-4 h-4 mt-0.5 shrink-0 text-[#16A34A]" />
+            <div>
+              <span className="font-bold block">Patient Login Required</span>
+              <span>{infoMessage}</span>
+            </div>
+          </div>
+        )}
 
         {/* Card Form */}
         <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-xl space-y-6">
@@ -117,7 +131,11 @@ export default function LoginPage() {
         <div className="text-center text-xs text-slate-500 space-y-2">
           <div>
             Don't have an account yet?{' '}
-            <Link to="/register" className="font-bold text-[#16A34A] hover:underline">
+            <Link
+              to="/register"
+              state={{ from, message: infoMessage }}
+              className="font-bold text-[#16A34A] hover:underline"
+            >
               Register now
             </Link>
           </div>

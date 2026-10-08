@@ -18,9 +18,16 @@ async function getTimeSlots(req, res) {
  * Create a new booking
  */
 async function createBooking(req, res) {
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({
+      success: false,
+      message: 'To book a test, please log in. If you are a new patient, please register first.'
+    });
+  }
+
   const client = await pool.connect();
   try {
-    const userId = req.user ? req.user.id : null;
+    const userId = req.user.id;
     const {
       patientName,
       patientAge,

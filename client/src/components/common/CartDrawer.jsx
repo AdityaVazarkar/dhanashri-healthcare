@@ -1,17 +1,28 @@
 import React from 'react';
-import { X, Trash2, ShoppingBag, ArrowRight, ShieldCheck, Clock } from 'lucide-react';
+import { X, Trash2, ShoppingBag, ArrowRight, ShieldCheck, Clock, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function CartDrawer() {
   const { cartItems, isCartOpen, setIsCartOpen, removeFromCart, subtotal, totalSavings, clearCart } = useCart();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   if (!isCartOpen) return null;
 
   const handleCheckout = () => {
     setIsCartOpen(false);
-    navigate('/book');
+    if (!isAuthenticated) {
+      navigate('/login', {
+        state: {
+          from: '/book',
+          message: 'To book a test, please log in. If you are a new patient, please register first.'
+        }
+      });
+    } else {
+      navigate('/book');
+    }
   };
 
   return (
@@ -131,9 +142,15 @@ export default function CartDrawer() {
                 onClick={handleCheckout}
                 className="w-full flex items-center justify-center space-x-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-600/20 transition"
               >
-                <span>Proceed to Book Slot</span>
+                <span>{isAuthenticated ? 'Proceed to Book Slot' : 'Login to Book Slot'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
+
+              {!isAuthenticated && (
+                <p className="text-[11px] text-center text-slate-500 font-medium">
+                  🔒 New patient? You can quickly register during checkout.
+                </p>
+              )}
             </div>
           )}
         </div>

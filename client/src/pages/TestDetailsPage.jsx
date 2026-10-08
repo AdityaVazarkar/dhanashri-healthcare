@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 export default function TestDetailsPage() {
@@ -21,6 +22,7 @@ export default function TestDetailsPage() {
   const [test, setTest] = useState(null);
   const [loading, setLoading] = useState(true);
   const { addToCart, setIsCartOpen } = useCart();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -56,7 +58,16 @@ export default function TestDetailsPage() {
 
   const handleBookNow = () => {
     addToCart(test, 'test');
-    navigate('/book');
+    if (!isAuthenticated) {
+      navigate('/login', {
+        state: {
+          from: '/book',
+          message: 'To book a test, please log in. If you are a new patient, please register first.'
+        }
+      });
+    } else {
+      navigate('/book');
+    }
   };
 
   const handleAddToCart = () => {

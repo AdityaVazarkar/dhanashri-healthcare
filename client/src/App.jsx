@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 
@@ -40,9 +40,19 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 // User Protected Route Guard
 function ProtectedUserRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
   if (loading) return null;
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to="/login"
+        state={{
+          from: location.pathname + location.search,
+          message: 'To book a test, please log in. If you are a new patient, please register first.'
+        }}
+        replace
+      />
+    );
   }
   return children;
 }
@@ -60,7 +70,14 @@ export default function App() {
               <Route path="tests" element={<TestCatalogPage />} />
               <Route path="tests/:id" element={<TestDetailsPage />} />
               <Route path="packages" element={<PackagesPage />} />
-              <Route path="book" element={<BookingFlowPage />} />
+              <Route
+                path="book"
+                element={
+                  <ProtectedUserRoute>
+                    <BookingFlowPage />
+                  </ProtectedUserRoute>
+                }
+              />
               <Route
                 path="bookings"
                 element={
